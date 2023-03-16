@@ -1,17 +1,21 @@
 package hr.fer.zemris.java.fractals;
 
+import com.sun.jdi.connect.Connector;
 import hr.fer.zemris.java.fractals.viewer.FractalViewer;
 import hr.fer.zemris.java.fractals.viewer.IFractalProducer;
 import hr.fer.zemris.java.fractals.viewer.IFractalResultObserver;
 import hr.fer.zemris.math.Complex;
 import hr.fer.zemris.math.ComplexRootedPolynomial;
 import hr.fer.zemris.math.NewtonRaphson;
+import hr.fer.zemris.util.ArgumentParser;
 import hr.fer.zemris.util.ComplexNumberParser;
 
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Used for visualizing Newton Raphson iteration fractal
@@ -20,24 +24,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class NewtonP1 {
 
-    public static final int DEFAULT_NUMBER_OF_WORKERS;
+    private static final int DEFAULT_NUMBER_OF_WORKERS;
 
     static {
         DEFAULT_NUMBER_OF_WORKERS = Runtime.getRuntime().availableProcessors();
     }
 
     public static void main(String[] args) {
-        Map<String, Integer> params = Collections.emptyMap();
-
-        try {
-            params = getParams(args);
-        } catch (IllegalArgumentException e) {
-            System.out.println(e.getMessage());
-            System.exit(0);
-        } catch (Exception e) {
-            System.out.println("Unable to read program arguments.");
-            System.exit(0);
-        }
+        Map<String, Integer> params = parseArguments(args);
 
         int numberOfWorkers;
         int numberOfTracks;
@@ -230,88 +224,25 @@ public class NewtonP1 {
     }
 
     /**
-     * Used to read program arguments
-     *
-     * @param args Program arguments
-     * @return Map of program parameters
-     * @throws IllegalArgumentException If any parameter is defined more than once or has an invalid value
-     * @throws NumberFormatException If parameter value is not a whole number
-     * @throws IndexOutOfBoundsException If parameter value not defined
+     * Used to parse NewtonP1 arguments
+     * @return mapping for param -> value
      */
-    public static Map<String, Integer> getParams(String[] args) {
+    private static Map<String, Integer> parseArguments(String[] args) {
         Map<String, Integer> params = new HashMap<>();
 
-        for (int i = 0; i < args.length; i++) {
-            String arg = args[i];
+        String[] formattedArgs = Stream.of(args)
+                .map(arg -> arg.replace("--", "-"))
+                .map(arg -> arg.replace("=", " "))
+                .collect(Collectors.joining(" "))
+                .split(" ");
 
-            if (arg.contains("--workers=")) {
-                if (params.get("workers") != null) {
-                    throw new IllegalArgumentException("Each argument can only be defined once.");
-                }
+        ArgumentParser argumentParser = new ArgumentParser(formattedArgs);
 
-                int argValue = Integer.parseInt(arg.split("=")[1]);
-                if (argValue < 1) {
-                    throw new IllegalArgumentException("Argument values must be greater or equal to 1.");
-                }
-                params.put("workers", argValue);
-            }
-
-            if (arg.contains("--tracks=")) {
-                if (params.get("tracks") != null) {
-                    throw new IllegalArgumentException("Each argument can only be defined once.");
-                }
-
-                int argValue = Integer.parseInt(arg.split("=")[1]);
-                if (argValue < 1) {
-                    throw new IllegalArgumentException("Argument values must be greater or equal to 1.");
-                }
-                params.put("tracks", argValue);
-            }
-
-            if (arg.equals("-w")) {
-                if (params.get("workers") != null) {
-                    throw new IllegalArgumentException("Each argument can only be defined once.");
-                }
-
-                int argValue = Integer.parseInt(args[++i]);
-                if (argValue < 1) {
-                    throw new IllegalArgumentException("Argument values must be greater or equal to 1.");
-                }
-                params.put("workers", argValue);
-            }
-
-            if (arg.equals("-t")) {
-                if (params.get("tracks") != null) {
-                    throw new IllegalArgumentException("Each argument can only be defined once.");
-                }
-
-                int argValue = Integer.parseInt(args[++i]);
-                if (argValue < 1) {
-                    throw new IllegalArgumentException("Argument values must be greater or equal to 1.");
-                }
-                params.put("tracks", argValue);
-            }
-        }
+        //TODO
+        //1. Check for multiple arg values and terminate if true
+        //2. Put arg value paris in params
 
         return params;
-    }
-
-    private void parseArg(String arg, String argName, String argKey, Map<String, Integer> params) {
-        if (arg.contains("--workers=")) {
-            if (params.get("workers") != null) {
-                throw new IllegalArgumentException("Each argument can only be defined once.");
-            }
-
-            int argValue = Integer.parseInt(arg.split("=")[1]);
-            if (argValue < 1) {
-                throw new IllegalArgumentException("Argument values must be greater or equal to 1.");
-            }
-            params.put("workers", argValue);
-        }
-    }
-
-    private void parseArg(String arg, String argName, Map<String, Integer> params) {
-        parseArg(arg, argName, argName, params);
     }
 }
 
