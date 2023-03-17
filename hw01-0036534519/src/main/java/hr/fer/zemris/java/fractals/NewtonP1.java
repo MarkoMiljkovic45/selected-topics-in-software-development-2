@@ -1,6 +1,5 @@
 package hr.fer.zemris.java.fractals;
 
-import com.sun.jdi.connect.Connector;
 import hr.fer.zemris.java.fractals.viewer.FractalViewer;
 import hr.fer.zemris.java.fractals.viewer.IFractalProducer;
 import hr.fer.zemris.java.fractals.viewer.IFractalResultObserver;
@@ -24,11 +23,11 @@ import java.util.stream.Stream;
  */
 public class NewtonP1 {
 
-    private static final int DEFAULT_NUMBER_OF_WORKERS;
-
-    static {
-        DEFAULT_NUMBER_OF_WORKERS = Runtime.getRuntime().availableProcessors();
-    }
+    private static final int DEFAULT_NUMBER_OF_WORKERS = Runtime.getRuntime().availableProcessors();
+    private static final String WORKERS = "workers";
+    private static final String[] WORKERS_PSEUDONYMS = {"workers", "w"};
+    private static final String TRACKS = "tracks";
+    private static final String[] TRACKS_PSEUDONYMS = {"tracks", "t"};
 
     public static void main(String[] args) {
         Map<String, Integer> params = parseArguments(args);
@@ -36,16 +35,20 @@ public class NewtonP1 {
         int numberOfWorkers;
         int numberOfTracks;
 
-        Integer argWorkers = params.get("workers");
-        Integer argTracks  = params.get("tracks");
+        int argWorkers = params.get(WORKERS);
+        int argTracks  = params.get(TRACKS);
 
-        if (argWorkers != null && argWorkers < DEFAULT_NUMBER_OF_WORKERS) {
+        if (argWorkers > 0 && argWorkers < DEFAULT_NUMBER_OF_WORKERS) {
             numberOfWorkers = argWorkers;
         } else {
             numberOfWorkers = DEFAULT_NUMBER_OF_WORKERS;
         }
 
-        numberOfTracks = Objects.requireNonNullElseGet(argTracks, () -> 4 * numberOfWorkers);
+        if (argTracks > 0) {
+            numberOfTracks = argTracks;
+        } else {
+            numberOfTracks = 4 * numberOfWorkers;
+        }
 
         System.out.println("Welcome to Newton-Raphson iteration-based fractal viewer.");
         System.out.println("Please enter at least two roots, one root per line. Enter 'done' when done.");
@@ -238,11 +241,30 @@ public class NewtonP1 {
 
         ArgumentParser argumentParser = new ArgumentParser(formattedArgs);
 
-        //TODO
-        //1. Check for multiple arg values and terminate if true
-        //2. Put arg value paris in params
+        params.put(WORKERS, getArgValue(argumentParser, WORKERS_PSEUDONYMS));
+        params.put(TRACKS, getArgValue(argumentParser, TRACKS_PSEUDONYMS));
 
         return params;
+    }
+
+    private static int getArgValue(ArgumentParser parser, String...argPseudonyms) {
+        List<String> argValues = new ArrayList<>();
+
+        for (String argPseudonym: argPseudonyms) {
+            argValues.addAll(parser.getArgumentValue(argPseudonym));
+        }
+
+        if (argValues.size() == 0) return 0;
+
+        try {
+            if (argValues.size() > 1) throw new IllegalArgumentException();
+            return Integer.parseInt(argValues.get(0));
+        } catch (Exception e) {
+            System.out.println("Invalid parameters for argument: " + argPseudonyms[0]);
+            System.exit(1);
+        }
+
+        throw new IllegalStateException("An unexpected error occurred");
     }
 }
 
