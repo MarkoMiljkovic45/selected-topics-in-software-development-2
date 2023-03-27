@@ -51,6 +51,7 @@ public class NewtonP1 {
         }
 
         System.out.println("Welcome to Newton-Raphson iteration-based fractal viewer.");
+        System.out.println("WORKERS = " + numberOfWorkers);
         System.out.println("Please enter at least two roots, one root per line. Enter 'done' when done.");
 
         List<Complex> roots = new ArrayList<>();
@@ -83,20 +84,10 @@ public class NewtonP1 {
 
     private static class CalculationJob implements Runnable {
         ComplexRootedPolynomial rootedPolynomial;
-        double reMin;
-        double reMax;
-        double imMin;
-        double imMax;
-        int width;
-        int height;
-        int yMin;
-        int yMax;
+        double reMin, reMax, imMin, imMax;
+        int width, height, yMin, yMax;
         short[] data;
         AtomicBoolean cancel;
-        public static CalculationJob NO_JOB = new CalculationJob();
-
-        private CalculationJob() {
-        }
 
         public CalculationJob(ComplexRootedPolynomial rootedPolynomial,double reMin,
                               double reMax, double imMin,
@@ -135,43 +126,20 @@ public class NewtonP1 {
 
         @Override
         public void setup() {
-            //TODO
+            //TODO Open thread pool and calculate parameters
         }
 
         @Override
         public void produce(double reMin, double reMax, double imMin, double imMax, int width, int height, long requestNo, IFractalResultObserver observer, AtomicBoolean cancel) {
-            System.out.println("Zapocinjem izracun...");
+            System.out.println("Generating image...");
             short[] data = new short[width * height];
 
             int numberOfTracks = Math.min(this.numberOfTracks, height);
-
-            System.out.println("Efektivan broj dretvi: " + numberOfWorkers);
-            System.out.println("Efektivan broj poslova: " + numberOfTracks);
+            System.out.println("TRACKS = " + numberOfTracks);
 
             int yPerTrack = height / numberOfTracks;
 
-            final BlockingQueue<CalculationJob> queue = new LinkedBlockingQueue<>();
-
-            Thread[] workers = new Thread[numberOfWorkers];
-
-            for(int i = 0; i < workers.length; i++) {
-                workers[i] = new Thread(() -> {
-                    while(true) {
-                        CalculationJob p;
-                        try {
-                            p = queue.take();
-                            if(p==CalculationJob.NO_JOB) break;
-                        } catch (InterruptedException e) {
-                            continue;
-                        }
-                        p.run();
-                    }
-                });
-            }
-
-            for (Thread worker : workers) {
-                worker.start();
-            }
+            //TODO Move parts to setup
 
             for (int i = 0; i < numberOfTracks; i++) {
                 int yMin = i * yPerTrack;
@@ -184,37 +152,11 @@ public class NewtonP1 {
 
                 CalculationJob job = new CalculationJob(rootedPolynomial, reMin, reMax, imMin, imMax, width, height, yMin, yMax, data, cancel);
 
-                while(true) {
-                    try {
-                        queue.put(job);
-                        break;
-                    } catch (InterruptedException ignorable) {
-                        //Ignore
-                    }
-                }
+                //TODO Add jobs to thread pool
             }
 
-            for (int i = 0; i < workers.length; i++) {
-                while(true) {
-                    try {
-                        queue.put(CalculationJob.NO_JOB);
-                        break;
-                    } catch (InterruptedException ignorable) {
-                        //Ignore
-                    }
-                }
-            }
 
-            for (Thread worker : workers) {
-                while (true) {
-                    try {
-                        worker.join();
-                        break;
-                    } catch (InterruptedException ignorable) {
-                        //Ignore
-                    }
-                }
-            }
+            //TODO Wait for jobs to finish
 
             System.out.println("Racunanje gotovo. Idem obavijestiti promatraca tj. GUI!");
             observer.acceptResult(data, (short)(rootedPolynomial.toComplexPolynomial().order() + 1), requestNo);
@@ -222,7 +164,7 @@ public class NewtonP1 {
 
         @Override
         public void close() {
-            //TODO
+            //TODO Close thread pool
         }
     }
 
