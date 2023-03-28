@@ -20,38 +20,25 @@ import java.util.stream.Stream;
  * <p>
  * This version utilizes multi-threading
  */
-public class NewtonP1
+public class NewtonP2
 {
-
-    private static final int DEFAULT_NUMBER_OF_WORKERS = Runtime.getRuntime().availableProcessors();
-    private static final String WORKERS = "workers";
-    private static final String[] WORKERS_PSEUDONYMS = {"workers", "w"};
-    private static final String TRACKS = "tracks";
-    private static final String[] TRACKS_PSEUDONYMS = {"tracks", "t"};
+    private static final String MINTRACKS = "mintracks";
+    private static final String[] MINTRACKS_PSEUDONYMS = {"mintracks", "m"};
+    private static final int MINTRACKS_DEFAULT = 16;
 
     public static void main(String[] args) {
         Map<String, Integer> params = parseArguments(args);
 
-        int numberOfWorkers;
-        int numberOfTracks;
+        int minTracks;
+        int argMinTracks = params.get(MINTRACKS);
 
-        int argWorkers = params.get(WORKERS);
-        int argTracks  = params.get(TRACKS);
-
-        if (argWorkers > 0 && argWorkers < DEFAULT_NUMBER_OF_WORKERS) {
-            numberOfWorkers = argWorkers;
+        if (argMinTracks > 0) {
+            minTracks = argMinTracks;
         } else {
-            numberOfWorkers = DEFAULT_NUMBER_OF_WORKERS;
-        }
-
-        if (argTracks > 0) {
-            numberOfTracks = argTracks;
-        } else {
-            numberOfTracks = 4 * numberOfWorkers;
+            minTracks = MINTRACKS_DEFAULT;
         }
 
         System.out.println("Welcome to Newton-Raphson iteration-based fractal viewer.");
-        System.out.println("WORKERS = " + numberOfWorkers);
         System.out.println("Please enter at least two roots, one root per line. Enter 'done' when done.");
 
         List<Complex> roots = new ArrayList<>();
@@ -79,22 +66,23 @@ public class NewtonP1
         ComplexRootedPolynomial crp = new ComplexRootedPolynomial(Complex.ONE, roots.toArray(new Complex[2]));
 
         System.out.println("Image of fractal will appear shortly. Thank you.");
-        FractalViewer.show(new NewtonRaphsonProducer(crp, numberOfWorkers, numberOfTracks));
+        FractalViewer.show(new NewtonRaphsonProducer(crp, minTracks));
     }
 
-    private static class CalculationJob implements Runnable {
+    private static class CalculationJob extends RecursiveAction {
         ComplexRootedPolynomial rootedPolynomial;
         double reMin, reMax, imMin, imMax;
-        int width, height, yMin, yMax;
+        int minTracks, width, height, yMin, yMax;
         short[] data;
         AtomicBoolean cancel;
 
-        public CalculationJob(ComplexRootedPolynomial rootedPolynomial,double reMin,
+        public CalculationJob(ComplexRootedPolynomial rootedPolynomial, int minTracks,double reMin,
                               double reMax, double imMin,
                               double imMax, int width, int height, int yMin, int yMax,
                               short[] data, AtomicBoolean cancel) {
             super();
             this.rootedPolynomial = rootedPolynomial;
+            this.minTracks = minTracks;
             this.reMin = reMin;
             this.reMax = reMax;
             this.imMin = imMin;
@@ -108,26 +96,35 @@ public class NewtonP1
         }
 
         @Override
-        public void run() {
-            NewtonRaphson.calculate(rootedPolynomial, reMin, reMax, imMin, imMax, width, height, yMin, yMax, data, cancel);
+        public void compute() {
+            int trackHeight = yMax - yMin;
+
+            if (height / trackHeight <= minTracks) {
+                NewtonRaphson.calculate(rootedPolynomial, reMin, reMax, imMin, imMax, width, height, yMin, yMax, data, cancel);
+                return;
+            }
+
+            int yMid = trackHeight / 2 + yMin;
+            CalculationJob job1 = new CalculationJob(rootedPolynomial, minTracks, reMin, reMax, imMin, imMax, width, height, yMin, yMid, data, cancel);
+            CalculationJob job2 = new CalculationJob(rootedPolynomial, minTracks, reMin, reMax, imMin, imMax, width, height, yMid, yMax, data, cancel);
+
+            invokeAll(job1, job2);
         }
     }
 
     private static class NewtonRaphsonProducer implements IFractalProducer {
         private final ComplexRootedPolynomial rootedPolynomial;
-        private final int numberOfWorkers;
-        private final int numberOfTracks;
-        private ExecutorService pool;
+        private final int minTracks;
+        private ForkJoinPool pool;
 
-        public NewtonRaphsonProducer(ComplexRootedPolynomial rootedPolynomial, int numberOfWorkers, int numberOfTracks) {
+        public NewtonRaphsonProducer(ComplexRootedPolynomial rootedPolynomial, int minTracks) {
             this.rootedPolynomial = rootedPolynomial;
-            this.numberOfWorkers = numberOfWorkers;
-            this.numberOfTracks = numberOfTracks;
+            this.minTracks        = minTracks;
         }
 
         @Override
         public void setup() {
-            pool = Executors.newFixedThreadPool(numberOfWorkers);
+            pool = new ForkJoinPool();
         }
 
         @Override
@@ -135,34 +132,11 @@ public class NewtonP1
             System.out.println("Generating image...");
             short[] data = new short[width * height];
 
-            int numberOfTracks = Math.min(this.numberOfTracks, height);
-            System.out.println("TRACKS = " + numberOfTracks);
+            int actualMinTracks = Math.min(minTracks, height);
+            System.out.println("MINTRACKS = " + actualMinTracks);
 
-            int yPerTrack = height / numberOfTracks;
-
-            List<Future<?>> results = new ArrayList<>();
-
-            for (int i = 0; i < numberOfTracks; i++) {
-                int yMin = i * yPerTrack;
-                int yMax;
-
-                if(i == numberOfTracks - 1) {
-                    yMax = height;
-                } else {
-                    yMax = (i + 1) * yPerTrack;
-                }
-
-                results.add(pool.submit(new CalculationJob(rootedPolynomial, reMin, reMax, imMin, imMax, width, height, yMin, yMax, data, cancel)));
-            }
-
-            for (Future<?> f: results) {
-                while(true) {
-                    try {
-                        f.get();
-                        break;
-                    } catch (InterruptedException | ExecutionException ignore) {}
-                }
-            }
+            CalculationJob job = new CalculationJob(rootedPolynomial, actualMinTracks, reMin, reMax, imMin, imMax, width, height, 0, height, data, cancel);
+            pool.invoke(job);
 
             System.out.println("Racunanje gotovo. Idem obavijestiti promatraca tj. GUI!");
             observer.acceptResult(data, (short)(rootedPolynomial.toComplexPolynomial().order() + 1), requestNo);
@@ -189,8 +163,7 @@ public class NewtonP1
 
         ArgumentParser argumentParser = new ArgumentParser(formattedArgs);
 
-        params.put(WORKERS, getArgValue(argumentParser, WORKERS_PSEUDONYMS));
-        params.put(TRACKS, getArgValue(argumentParser, TRACKS_PSEUDONYMS));
+        params.put(MINTRACKS, getArgValue(argumentParser, MINTRACKS_PSEUDONYMS));
 
         return params;
     }
