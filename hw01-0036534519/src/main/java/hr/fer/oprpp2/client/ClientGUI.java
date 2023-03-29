@@ -7,6 +7,8 @@ import javax.swing.*;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
@@ -33,6 +35,7 @@ public class ClientGUI extends JFrame {
             public void windowClosing(WindowEvent e) {
                 listeners.forEach(UserInputListener::closeApplication);
                 ClientGUI.this.dispose();
+                listeners.clear();
             }
         });
 
@@ -43,14 +46,23 @@ public class ClientGUI extends JFrame {
         Container contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
 
+        sendMessage.putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0));
+        clientInput.addActionListener(sendMessage);
         contentPane.add(clientInput, BorderLayout.PAGE_START);
 
-        textArea.setEnabled(false);
+        textArea.setFocusable(false);
         JScrollPane scrollPane = new JScrollPane(textArea);
         contentPane.add(scrollPane, BorderLayout.CENTER);
     }
 
-    //TODO Add action on Enter press in text field
+    private final Action sendMessage = new AbstractAction() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            String message = clientInput.getText();
+            clientInput.setText("");
+            listeners.forEach(l -> l.messageSent(message));
+        }
+    };
 
     public void addUserInputListener(UserInputListener listener) {
         listeners.add(listener);
@@ -70,6 +82,7 @@ public class ClientGUI extends JFrame {
         public void messageAcknowledgementFailed() {
             JOptionPane.showMessageDialog(ClientGUI.this, "Connection failed", "Error", JOptionPane.ERROR_MESSAGE);
             ClientGUI.this.dispose();
+            listeners.clear();
         }
     };
 }

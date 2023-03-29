@@ -60,9 +60,7 @@ public class Client {
         receiveThread.start();
 
         while(alive) {
-            if (!unacknowledgedMessages.isEmpty()) {
-                acknowledgeMessage();
-            }
+            acknowledgeMessage();
         }
 
         endConnection();
@@ -89,14 +87,21 @@ public class Client {
         long         randKey = random.nextLong();
         HelloMessage hello   = new HelloMessage(messageNumber(), username, randKey);
 
-        for (int i = 0; i < RETRANSMISSION_LIMIT; i++) {
-            Message response = sendAndWaitForMessage(hello);
+        try {
+            socket.setSoTimeout(ACK_TIMEOUT);
 
-            if (response != null && response.getCode() == AckMessage.CODE) {
-                AckMessage ack = (AckMessage) response;
-                return ack.UID();
+            for (int i = 0; i < RETRANSMISSION_LIMIT; i++) {
+                Message response = sendAndWaitForMessage(hello);
+
+                if (response != null && response.getCode() == AckMessage.CODE) {
+                    AckMessage ack = (AckMessage) response;
+                    return ack.UID();
+                }
             }
+
+            socket.setSoTimeout(0);
         }
+        catch (SocketException ignore) { System.out.println("GetUIDFromServer SocketException"); }
 
         throw new IllegalStateException("Failed to connect to server");
     }
@@ -119,14 +124,16 @@ public class Client {
 
     private void acknowledgeMessage() {
         try {
-            int retransmission = 0;
             Message oldest     = unacknowledgedMessages.take();
+            int retransmission = 0;
 
             while (retransmission < RETRANSMISSION_LIMIT) {
+                retransmission++;
+
                 AckMessage ack = ackQueue.poll(ACK_TIMEOUT, ACK_TIMEOUT_TIME_UNIT);
 
                 if (ack == null) {
-                    retransmission++;
+                    sendMessage(oldest);
                     continue;
                 }
 
@@ -135,13 +142,13 @@ public class Client {
                 }
 
                 unacknowledgedMessages.removeIf(message -> message.messageNumber() == ack.messageNumber());
-                sendQueue.add(oldest);
-                retransmission++;
+                sendMessage(oldest);
             }
 
             if (retransmission == RETRANSMISSION_LIMIT) {
                 setAlive(false);
                 listeners.forEach(ClientListener::messageAcknowledgementFailed);
+                listeners.clear();
             }
         }
         catch (InterruptedException ignore) {
@@ -169,7 +176,7 @@ public class Client {
             DatagramPacket packet = new DatagramPacket(payload, payload.length, serverAddress);
             socket.send(packet);
         }
-        catch (IOException ignore) {}
+        catch (IOException ignore) { System.out.println("SendMessage IOException"); }
     }
 
     /**
@@ -184,14 +191,14 @@ public class Client {
 
             return Util.parseBytes(response.getData(), response.getOffset(), response.getLength());
         }
-        catch (IOException ignore) {}
+        catch (IOException ignore) { }
 
         return null;
     }
 
     private String messageToString(InMessage in) {
 
-        return "[/" + serverAddress + "] Poruka od korisnika: " + in.username() + "\n" +
+        return "[" + serverAddress + "] Poruka od korisnika: " + in.username() + "\n" +
                 in.text() + "\n";
     }
 
@@ -205,6 +212,9 @@ public class Client {
         @Override
         public void closeApplication() {
             setAlive(false);
+            listeners.clear();
+            endConnection();
+            System.exit(0);
         }
     };
 
@@ -214,10 +224,14 @@ public class Client {
             while (alive) {
                 try {
                     Message message = sendQueue.take();
-                    unacknowledgedMessages.add(message);
+
                     sendMessage(message);
+
+                    if (message.getCode() != AckMessage.CODE) {
+                        unacknowledgedMessages.add(message);
+                    }
                 }
-                catch (InterruptedException ignore) {}
+                catch (InterruptedException ignore) { System.out.println("SendMessageJob Interrupted Exception"); }
             }
         }
     }
