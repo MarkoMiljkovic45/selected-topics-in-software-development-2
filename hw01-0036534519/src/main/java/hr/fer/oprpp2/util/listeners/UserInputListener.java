@@ -7,4 +7,9 @@ public interface UserInputListener {
      * @param text The message
      */
     void messageSent(String text);
+
+    /**
+     * Triggers when the user wants to exit the application
+     */
+    void closeApplication();
 }

@@ -16,9 +16,16 @@ public class Main {
 
             Client client = new Client(serverIp, serverPort, username);
 
-            SwingUtilities.invokeLater(() -> new ClientGUI(client).setVisible(true));
-        } catch (Exception e) {
-            System.out.println("An error occurred: " + e.getMessage());
+            SwingUtilities.invokeLater(() -> {
+                ClientGUI gui = new ClientGUI(client.getUsername());
+
+                client.addClientListener(gui.LISTENER);
+                gui.addUserInputListener(client.LISTENER);
+
+                gui.setVisible(true);
+            });
+            client.start();
         }
+        catch (Exception e) { System.out.println("An error occurred: " + e.getMessage()); }
     }
 }

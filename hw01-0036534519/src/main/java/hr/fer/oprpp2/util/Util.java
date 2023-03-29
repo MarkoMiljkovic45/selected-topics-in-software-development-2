@@ -3,9 +3,7 @@ package hr.fer.oprpp2.util;
 import hr.fer.oprpp2.util.model.Message;
 import hr.fer.oprpp2.util.model.impl.*;
 
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
+import java.util.Arrays;
 
 public class Util {
     public static Message parseBytes(byte[] bytes) {
@@ -21,5 +19,9 @@ public class Util {
             case OutMessage.CODE -> OutMessage.getInstance(bytes);
             default -> null;
         };
+    }
+
+    public static Message parseBytes(byte[] bytes, int offset, int length) {
+        return parseBytes(Arrays.copyOfRange(bytes, offset, offset + length));
     }
 }
