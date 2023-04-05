@@ -1,4 +1,4 @@
-package hr.fer.oprpp2;
+package hr.fer.oprpp2.server;
 
 import hr.fer.oprpp2.util.Util;
 import hr.fer.oprpp2.util.model.Message;
@@ -208,20 +208,5 @@ public class Server {
                 catch (InterruptedException ignore) {}
             }
         }
-    }
-
-    public static void main(String[] args) {
-        if (args.length != 1) {
-            System.out.println("Invalid number of arguments.");
-            return;
-        }
-
-        try {
-            int port = Integer.parseInt(args[0]);
-            Server server = new Server();
-            server.bindToPort(port);
-            server.start();
-        }
-        catch (Exception e) { System.out.println("An error occurred: " + e.getMessage()); }
     }
 }

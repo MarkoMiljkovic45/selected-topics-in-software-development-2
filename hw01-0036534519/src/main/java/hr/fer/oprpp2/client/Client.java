@@ -2,7 +2,6 @@ package hr.fer.oprpp2.client;
 
 import hr.fer.oprpp2.util.Util;
 import hr.fer.oprpp2.util.listeners.ClientListener;
-import hr.fer.oprpp2.util.listeners.UserInputListener;
 import hr.fer.oprpp2.util.model.Message;
 import hr.fer.oprpp2.util.model.impl.*;
 
@@ -19,11 +18,11 @@ public class Client {
     private final String username;
     private final long UID;
     private long messageNumber;
-    private final BlockingQueue<Message> sendQueue;
-    private final BlockingQueue<AckMessage> ackQueue;
-    private final BlockingQueue<Message> unacknowledgedMessages;
+    private long mostRecentServerInMessageNumber;
+    private volatile boolean alive;
+
+    private final Session session;
     private final List<ClientListener> listeners;
-    private boolean alive;
 
     private static final int      ACK_TIMEOUT           = 5000;
     private static final TimeUnit ACK_TIMEOUT_TIME_UNIT = TimeUnit.MILLISECONDS;
@@ -34,36 +33,58 @@ public class Client {
         try {
             this.socket        = new DatagramSocket();
             this.serverAddress = new InetSocketAddress(InetAddress.getByName(serverIp), serverPort);
+
+            socket.setSoTimeout(ACK_TIMEOUT);
         }
         catch (SocketException socketException) { throw new IllegalStateException("Unable to open a UDP connection: " + socketException.getMessage()); }
         catch (UnknownHostException unknownHostException) { throw new IllegalArgumentException("Unable to connect to " + serverIp); }
 
-        this.username               = username;
-        this.messageNumber          = 0;
-        this.UID                    = getUIDFromServer();
-        this.sendQueue              = new LinkedBlockingQueue<>();
-        this.ackQueue               = new LinkedBlockingQueue<>();
-        this.unacknowledgedMessages = new LinkedBlockingQueue<>();
-        this.listeners              = new ArrayList<>();
-        this.alive                  = false;
+        this.username      = username;
+        this.messageNumber = 0;
+        this.UID           = getUIDFromServer();
+        this.listeners     = new ArrayList<>();
+        this.session       = new Session();
+        this.alive         = false;
+
+        this.mostRecentServerInMessageNumber = 0;
     }
 
     public void start() {
         setAlive(true);
 
-        Thread sendThread = new Thread(new SendMessageJob());
-        sendThread.setDaemon(true);
-        sendThread.start();
-
-        Thread receiveThread = new Thread(new ReceiveMessageJob());
-        receiveThread.setDaemon(true);
-        receiveThread.start();
+        new Thread(session).start();
 
         while(alive) {
-            acknowledgeMessage();
+            Message message = waitForResponse();
+
+            if (message == null) continue;
+
+            try {
+                switch (message.getCode()) {
+                    case InMessage.CODE  -> handleIn((InMessage) message);
+                    case AckMessage.CODE -> handleAck((AckMessage) message);
+                }
+            }
+            catch (Exception ignore) {}
         }
 
-        endConnection();
+        session.sendQueue.add(new ByeMessage(getMessageNumber(), UID));
+        listeners.clear();
+    }
+
+    private void handleIn(InMessage in) {
+        long serverInNumber = in.messageNumber();
+
+        if (mostRecentServerInMessageNumber < serverInNumber) {
+            listeners.forEach(l -> l.messageReceived(messageToString(in)));
+            setMostRecentServerInMessageNumber(serverInNumber);
+        }
+
+        sendMessage(new AckMessage(serverInNumber, UID));
+    }
+
+    private void handleAck(AckMessage ack) {
+        session.receiveQueue.add(ack);
     }
 
     public String getUsername() {
@@ -71,89 +92,46 @@ public class Client {
     }
 
     public void setAlive(boolean alive) {
+        if (!alive) {
+            listeners.forEach(ClientListener::closeConnection);
+        }
+
         this.alive = alive;
+    }
+
+    public void setMostRecentServerInMessageNumber(long serverInNumber) {
+        if (serverInNumber > mostRecentServerInMessageNumber) {
+            mostRecentServerInMessageNumber = serverInNumber;
+        }
     }
 
     public void addClientListener(ClientListener listener) {
         listeners.add(listener);
     }
 
-    private long messageNumber() {
+    public void removeClientListener(ClientListener listener) {
+        listeners.remove(listener);
+    }
+
+    private long getMessageNumber() {
         return messageNumber++;
     }
 
     private long getUIDFromServer() {
         Random       random  = new Random();
         long         randKey = random.nextLong();
-        HelloMessage hello   = new HelloMessage(messageNumber(), username, randKey);
+        HelloMessage hello   = new HelloMessage(getMessageNumber(), username, randKey);
 
-        try {
-            socket.setSoTimeout(ACK_TIMEOUT);
+        for (int i = 0; i < RETRANSMISSION_LIMIT; i++) {
+            Message response = sendAndWaitForMessage(hello);
 
-            for (int i = 0; i < RETRANSMISSION_LIMIT; i++) {
-                Message response = sendAndWaitForMessage(hello);
-
-                if (response != null && response.getCode() == AckMessage.CODE) {
-                    AckMessage ack = (AckMessage) response;
-                    return ack.UID();
-                }
+            if (response != null && response.getCode() == AckMessage.CODE) {
+                AckMessage ack = (AckMessage) response;
+                return ack.UID();
             }
-
-            socket.setSoTimeout(0);
         }
-        catch (SocketException ignore) { System.out.println("GetUIDFromServer SocketException"); }
 
         throw new IllegalStateException("Failed to connect to server");
-    }
-
-    private void endConnection() {
-        ByeMessage bye = new ByeMessage(messageNumber(), UID);
-
-        try {
-            socket.setSoTimeout(ACK_TIMEOUT);
-
-            for (int i = 0; i < RETRANSMISSION_LIMIT; i++) {
-                Message response = sendAndWaitForMessage(bye);
-
-                if (response != null && response.getCode() == AckMessage.CODE) break;
-            }
-        } catch (SocketException e) {
-            sendMessage(bye);
-        }
-    }
-
-    private void acknowledgeMessage() {
-        try {
-            Message oldest     = unacknowledgedMessages.take();
-            int retransmission = 0;
-
-            while (retransmission < RETRANSMISSION_LIMIT) {
-                retransmission++;
-
-                AckMessage ack = ackQueue.poll(ACK_TIMEOUT, ACK_TIMEOUT_TIME_UNIT);
-
-                if (ack == null) {
-                    sendMessage(oldest);
-                    continue;
-                }
-
-                if (oldest.messageNumber() == ack.messageNumber()) {
-                    break;
-                }
-
-                unacknowledgedMessages.removeIf(message -> message.messageNumber() == ack.messageNumber());
-                sendMessage(oldest);
-            }
-
-            if (retransmission == RETRANSMISSION_LIMIT) {
-                setAlive(false);
-                listeners.forEach(ClientListener::messageAcknowledgementFailed);
-                listeners.clear();
-            }
-        }
-        catch (InterruptedException ignore) {
-            System.out.println("Message acknowledging interrupted");
-        }
     }
 
     /**
@@ -202,58 +180,61 @@ public class Client {
                 in.text() + "\n";
     }
 
-    public UserInputListener LISTENER = new UserInputListener() {
-        @Override
-        public void messageSent(String text) {
-            OutMessage out = new OutMessage(messageNumber(), UID, text);
-            sendQueue.add(out);
-        }
-
-        @Override
-        public void closeApplication() {
-            setAlive(false);
-            listeners.clear();
-            endConnection();
-            System.exit(0);
-        }
-    };
-
-    private class SendMessageJob implements Runnable {
-        @Override
-        public void run() {
-            while (alive) {
-                try {
-                    Message message = sendQueue.take();
-
-                    sendMessage(message);
-
-                    if (message.getCode() != AckMessage.CODE) {
-                        unacknowledgedMessages.add(message);
-                    }
-                }
-                catch (InterruptedException ignore) { System.out.println("SendMessageJob Interrupted Exception"); }
-            }
-        }
+    public void sendMessage(String text) {
+        OutMessage out = new OutMessage(getMessageNumber(), UID, text);
+        session.sendQueue.add(out);
     }
 
-    private class ReceiveMessageJob implements Runnable {
+
+    private class Session implements Runnable {
+        private final BlockingQueue<Message> sendQueue;
+        private final BlockingQueue<Message> receiveQueue;
+
+        public Session() {
+            this.sendQueue    = new LinkedBlockingQueue<>();
+            this.receiveQueue = new LinkedBlockingQueue<>();
+        }
+
         @Override
         public void run() {
             while(alive) {
-                Message message = waitForResponse();
+                try {
+                    Message message = sendQueue.take();
+                    sendMessage(message);
+                }
+                catch (InterruptedException ignore) { }
+            }
+        }
 
-                if (message == null) {
-                    continue;
+        private void sendMessage(Message message) {
+            int retransmissions = 0;
+
+            while (true) {
+                retransmissions++;
+
+                Client.this.sendMessage(message);
+
+                if (retransmissions > RETRANSMISSION_LIMIT) {
+                    setAlive(false);
+                    return;
                 }
 
-                if (message.getCode() == AckMessage.CODE) {
-                    ackQueue.add((AckMessage) message);
-                }
+                try {
+                    Message response = receiveQueue.poll(ACK_TIMEOUT, ACK_TIMEOUT_TIME_UNIT);
 
-                if (message.getCode() == InMessage.CODE) {
-                    listeners.forEach(l -> l.messageReceived(messageToString((InMessage) message)));
-                    sendQueue.add(new AckMessage(message.messageNumber(), UID));
+                    if (response == null) {
+                        continue;
+                    }
+
+                    if (response.getCode() != AckMessage.CODE) {
+                        continue;
+                    }
+
+                    if (response.messageNumber() == message.messageNumber()) {
+                        return;
+                    }
                 }
+                catch (InterruptedException ignore) {}
             }
         }
     }

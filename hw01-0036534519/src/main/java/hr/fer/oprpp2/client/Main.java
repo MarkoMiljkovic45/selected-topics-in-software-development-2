@@ -15,15 +15,7 @@ public class Main {
             String username   = args[2];
 
             Client client = new Client(serverIp, serverPort, username);
-
-            SwingUtilities.invokeLater(() -> {
-                ClientGUI gui = new ClientGUI(client.getUsername());
-
-                client.addClientListener(gui.LISTENER);
-                gui.addUserInputListener(client.LISTENER);
-
-                gui.setVisible(true);
-            });
+            SwingUtilities.invokeLater(() -> new ClientGUI(client).setVisible(true));
             client.start();
         }
         catch (Exception e) { System.out.println("An error occurred: " + e.getMessage()); }

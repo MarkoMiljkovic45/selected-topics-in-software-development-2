@@ -11,5 +11,5 @@ public interface ClientListener {
     /**
      * Triggered when the listener fails to receive an acknowledgment from the server
      */
-    void messageAcknowledgementFailed();
+    void closeConnection();
 }
