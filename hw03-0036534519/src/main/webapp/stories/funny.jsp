@@ -15,11 +15,11 @@
   </head>
   <body style="background-color: ${pickedBgCol == null ? "white" : pickedBgCol}">
     <p style="color: <%= getRandomColor() %>">
-      Kaže zeko zmiji:</br>
-      - "Izvini što sam te neki dan zezao sto nemaš noge."</br>
-      Na to će zmija:</br>
-      - "Ma nema veze, bilo pa prošlo."</br>
-      Na to će zeko:</br>
+      Kaže zeko zmiji:<br/>
+      - "Izvini što sam te neki dan zezao sto nemaš noge."<br/>
+      Na to će zmija:<br/>
+      - "Ma nema veze, bilo pa prošlo."<br/>
+      Na to će zeko:<br/>
       - "E svaka ti čast! Evo ruka!"
     </p>
   </body>

@@ -23,5 +23,9 @@
         <div>
             <a href="stories/funny.jsp">Funny story</a>
         </div>
+
+        <div>
+            <a href="report.jsp">OS usage report</a>
+        </div>
     </body>
 </html>
