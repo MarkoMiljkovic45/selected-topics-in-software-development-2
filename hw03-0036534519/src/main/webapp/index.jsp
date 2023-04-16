@@ -31,5 +31,9 @@
         <div>
             <a href="${pageContext.request.contextPath}/powers?a=1&b=100&n=3">Generate xls</a>
         </div>
+
+        <div>
+            <a href="appinfo.jsp">App info</a>
+        </div>
     </body>
 </html>

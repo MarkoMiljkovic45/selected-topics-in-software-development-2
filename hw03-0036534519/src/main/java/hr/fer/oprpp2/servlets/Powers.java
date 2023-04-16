@@ -16,15 +16,13 @@ public class Powers extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
-        resp.setHeader("Content-Disposition", "attachment; filename=\"tablica.xls\"");
-
         try (HSSFWorkbook hwb = new HSSFWorkbook()) {
             int a = Integer.parseInt(req.getParameter("a"));
             int b = Integer.parseInt(req.getParameter("b"));
             int n = Integer.parseInt(req.getParameter("n"));
             int offset = b - a;
 
-            boolean illegalArgCombination = a < -100 || b < -100 || b > 100 || offset <= 0 || n < 1 || n > 5;
+            boolean illegalArgCombination = a < -100 || b < -100 || b > 100 || offset < 0 || n < 1 || n > 5;
 
             if (illegalArgCombination) {
                 throw new IllegalArgumentException();
@@ -33,7 +31,7 @@ public class Powers extends HttpServlet {
             for (int pow = 1; pow <= n; pow++) {
                 HSSFSheet sheet =  hwb.createSheet("pow=" + pow);
 
-                for (int i = 0; i < offset; i++) {
+                for (int i = 0; i <= offset; i++) {
                     HSSFRow row = sheet.createRow(i);
                     int num = a + i;
 
@@ -42,12 +40,14 @@ public class Powers extends HttpServlet {
                 }
             }
 
+            resp.setHeader("Content-Disposition", "attachment; filename=\"tablica.xls\"");
+            resp.setStatus(HttpServletResponse.SC_OK);
             hwb.write(resp.getOutputStream());
             resp.getOutputStream().flush();
-            resp.setStatus(HttpServletResponse.SC_OK);
         }
         catch (IllegalArgumentException |   NullPointerException ex) {
             req.setAttribute("err", "Unexpected arguments");
+            req.getRequestDispatcher("/WEB-INF/pages/error.jsp").forward(req, resp);
         }
         catch (Exception ex) {
             req.setAttribute("err", ex.getMessage());
