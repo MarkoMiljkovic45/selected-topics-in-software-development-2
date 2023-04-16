@@ -19,6 +19,7 @@ public class ReportImage extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.setContentType("image/png");
+        resp.setStatus(HttpServletResponse.SC_OK);
 
         OutputStream outputStream = resp.getOutputStream();
 
@@ -26,6 +27,8 @@ public class ReportImage extends HttpServlet {
         int width = 500;
         int height = 350;
         ChartUtilities.writeChartAsPNG(outputStream, chart, width, height);
+
+        outputStream.flush();
     }
 
     private static JFreeChart getChart() {

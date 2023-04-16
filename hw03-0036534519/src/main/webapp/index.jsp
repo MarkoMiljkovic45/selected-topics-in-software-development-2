@@ -27,5 +27,9 @@
         <div>
             <a href="report.jsp">OS usage report</a>
         </div>
+
+        <div>
+            <a href="${pageContext.request.contextPath}/powers?a=1&b=100&n=3">Generate xls</a>
+        </div>
     </body>
 </html>
