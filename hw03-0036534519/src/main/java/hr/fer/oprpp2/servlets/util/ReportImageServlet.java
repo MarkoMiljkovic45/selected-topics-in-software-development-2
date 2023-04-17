@@ -1,4 +1,4 @@
-package hr.fer.oprpp2.servlets;
+package hr.fer.oprpp2.servlets.util;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartUtilities;
@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 @WebServlet(name="reportImage", urlPatterns={"/reportImage"})
-public class ReportImage extends HttpServlet {
+public class ReportImageServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
