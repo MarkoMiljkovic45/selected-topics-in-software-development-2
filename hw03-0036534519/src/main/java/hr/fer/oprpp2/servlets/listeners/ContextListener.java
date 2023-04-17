@@ -1,4 +1,4 @@
-package hr.fer.oprpp2.servlets;
+package hr.fer.oprpp2.servlets.listeners;
 
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;

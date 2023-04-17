@@ -35,5 +35,9 @@
         <div>
             <a href="appinfo.jsp">App info</a>
         </div>
+
+        <div>
+            <a href="${pageContext.request.contextPath}/glasanje">Glasanje</a>
+        </div>
     </body>
 </html>

@@ -1,4 +1,4 @@
-package hr.fer.oprpp2.servlets;
+package hr.fer.oprpp2.servlets.util;
 
 
 import javax.servlet.ServletException;
@@ -9,10 +9,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 @WebServlet(name="trigonometric", urlPatterns={"/trigonometric"})
-public class Trigonometric extends HttpServlet {
+public class TrigonometricServlet extends HttpServlet {
 
     public static class TrigFunction {
         private final int arg;

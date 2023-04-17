@@ -1,4 +1,4 @@
-package hr.fer.oprpp2.servlets;
+package hr.fer.oprpp2.servlets.util;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.util.Objects;
 
 @WebServlet(name="setcolor", urlPatterns={"/setcolor"})
-public class SetColor extends HttpServlet {
+public class SetColorServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {

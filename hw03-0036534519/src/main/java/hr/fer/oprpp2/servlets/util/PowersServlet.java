@@ -1,4 +1,4 @@
-package hr.fer.oprpp2.servlets;
+package hr.fer.oprpp2.servlets.util;
 
 import org.apache.poi.hssf.usermodel.HSSFRow;
 import org.apache.poi.hssf.usermodel.HSSFSheet;
@@ -12,7 +12,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @WebServlet(name="powers", urlPatterns={"/powers"})
-public class Powers extends HttpServlet {
+public class PowersServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
