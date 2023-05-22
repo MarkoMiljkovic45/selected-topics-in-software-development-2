@@ -31,7 +31,7 @@ public class ConnectionSetterFilter implements Filter {
 			FilterChain chain) throws IOException, ServletException {
 		
 		DataSource ds = (DataSource)request.getServletContext().getAttribute("hr.fer.zemris.dbpool");
-		Connection con = null;
+		Connection con;
 		try {
 			con = ds.getConnection();
 		} catch (SQLException e) {
@@ -42,7 +42,7 @@ public class ConnectionSetterFilter implements Filter {
 			chain.doFilter(request, response);
 		} finally {
 			SQLConnectionProvider.setConnection(null);
-			try { con.close(); } catch(SQLException ignorable) {}
+			try { con.close(); } catch(SQLException ignore) {}
 		}
 	}
 	

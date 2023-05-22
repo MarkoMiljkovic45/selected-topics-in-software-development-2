@@ -1,5 +1,9 @@
 package hr.fer.oprpp2.jmbag0036534519.dao;
 
+import hr.fer.oprpp2.jmbag0036534519.model.Poll;
+
+import java.util.List;
+
 /**
  * Sučelje prema podsustavu za perzistenciju podataka.
  * 
@@ -7,5 +11,5 @@ package hr.fer.oprpp2.jmbag0036534519.dao;
  *
  */
 public interface DAO {
-
+    List<Poll> getAllPolls();
 }
