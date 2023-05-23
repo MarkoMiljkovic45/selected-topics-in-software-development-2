@@ -11,6 +11,6 @@ public class RedirectHomeServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        resp.sendRedirect("/servleti/index.html");
+        resp.sendRedirect(req.getContextPath() + "/servleti/index.html");
     }
 }

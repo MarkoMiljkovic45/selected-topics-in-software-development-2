@@ -11,7 +11,7 @@ import java.sql.Connection;
  */
 public class SQLConnectionProvider {
 
-	private static ThreadLocal<Connection> connections = new ThreadLocal<>();
+	private static final ThreadLocal<Connection> connections = new ThreadLocal<>();
 	
 	/**
 	 * Postavi vezu za trenutnu dretvu (ili obriši zapis iz mape ako je argument <code>null</code>).

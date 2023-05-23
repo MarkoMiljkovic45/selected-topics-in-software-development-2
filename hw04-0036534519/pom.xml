@@ -16,6 +16,8 @@
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
     <maven.compiler.showDeprecation>true</maven.compiler.showDeprecation>
+	<webapp.name>voting-app</webapp.name>  <!-- change it here -->
+
   </properties>
 
   <dependencies>
@@ -81,12 +83,12 @@
 			<configuration>
 				<scanIntervalSeconds>10</scanIntervalSeconds>
 				<webApp>
-					<contextPath>/webapp-baza</contextPath>
+					<contextPath>/${webapp.name}</contextPath>
 				</webApp>
 			</configuration>
 		</plugin>
 	</plugins>
-    <finalName>voting-app</finalName>
+	<finalName>${webapp.name}</finalName>
   </build>
 
 </project>

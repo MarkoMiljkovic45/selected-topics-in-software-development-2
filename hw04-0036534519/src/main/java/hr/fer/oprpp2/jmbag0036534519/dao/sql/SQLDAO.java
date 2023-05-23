@@ -39,7 +39,6 @@ public class SQLDAO implements DAO {
                     poll.setId(rs.getLong(1));
                     poll.setTitle(rs.getString(2));
                     poll.setMessage(rs.getString(3));
-
                     polls.add(poll);
                 }
             }
