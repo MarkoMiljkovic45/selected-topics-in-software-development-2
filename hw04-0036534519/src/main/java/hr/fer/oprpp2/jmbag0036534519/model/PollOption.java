@@ -5,6 +5,7 @@ public class PollOption {
     private String optionTitle;
     private String optionLink;
     private long pollID;
+    private long votesCount;
 
     public PollOption() {
     }
@@ -25,6 +26,10 @@ public class PollOption {
         return pollID;
     }
 
+    public long getVotesCount() {
+        return votesCount;
+    }
+
     public void setId(long id) {
         this.id = id;
     }
@@ -39,6 +44,10 @@ public class PollOption {
 
     public void setPollID(long pollID) {
         this.pollID = pollID;
+    }
+
+    public void setVotesCount(long votesCount) {
+        this.votesCount = votesCount;
     }
 
     @Override
