@@ -12,11 +12,14 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
+import java.util.List;
 
 @WebServlet("/servleti/main")
 public class MainServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        List<BlogUser> users = DAOProvider.getDAO().getBlogUsers();
+        req.setAttribute("users", users);
         req.getRequestDispatcher("/WEB-INF/pages/Main.jsp").forward(req, resp);
     }
 
@@ -34,12 +37,12 @@ public class MainServlet extends HttpServlet {
             return;
         }
 
-        BlogUser user = DAOProvider.getDAO().getBlogUserByNick(loginForm.getNickname());
+        BlogUser user = DAOProvider.getDAO().getBlogUserByNickname(loginForm.getNickname());
 
         if (user == null) {
-            loginForm.setError("form", "Invalid username or password!");
             loginForm.setPassword("");
             req.setAttribute("loginForm", loginForm);
+            req.setAttribute("error", "Invalid username or password");
             doGet(req, resp);
             return;
         }
@@ -48,9 +51,9 @@ public class MainServlet extends HttpServlet {
         String providedPasswordHash = Util.getSHA1Digest(loginForm.getPassword());
 
         if (!userPasswordHash.equals(providedPasswordHash)) {
-            loginForm.setError("form", "Invalid username or password!");
             loginForm.setPassword("");
             req.setAttribute("loginForm", loginForm);
+            req.setAttribute("error", "Invalid username or password");
             doGet(req, resp);
             return;
         }

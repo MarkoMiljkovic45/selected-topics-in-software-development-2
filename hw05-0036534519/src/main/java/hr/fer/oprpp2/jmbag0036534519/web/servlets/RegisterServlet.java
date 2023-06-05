@@ -2,7 +2,6 @@ package hr.fer.oprpp2.jmbag0036534519.web.servlets;
 
 import hr.fer.oprpp2.jmbag0036534519.dao.DAOProvider;
 import hr.fer.oprpp2.jmbag0036534519.model.BlogUser;
-import hr.fer.oprpp2.jmbag0036534519.model.forms.BlogUserLoginForm;
 import hr.fer.oprpp2.jmbag0036534519.model.forms.BlogUserRegisterForm;
 
 import javax.servlet.ServletException;
@@ -35,7 +34,7 @@ public class RegisterServlet extends HttpServlet {
             return;
         }
 
-        BlogUser user = DAOProvider.getDAO().getBlogUserByNick(registerForm.getNickname());
+        BlogUser user = DAOProvider.getDAO().getBlogUserByNickname(registerForm.getNickname());
 
         if (user != null) {
             registerForm.setError("nickname", "Nickname already in use");
@@ -48,7 +47,7 @@ public class RegisterServlet extends HttpServlet {
         registerForm.fillUser(newUser);
 
         DAOProvider.getDAO().persistBlogUser(newUser);
-        newUser.setId(DAOProvider.getDAO().getBlogUserByNick(newUser.getNickname()).getId());
+        newUser.setId(DAOProvider.getDAO().getBlogUserByNickname(newUser.getNickname()).getId());
 
         HttpSession session = req.getSession();
         session.setAttribute("userId", newUser.getId());

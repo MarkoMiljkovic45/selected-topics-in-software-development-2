@@ -9,6 +9,10 @@ import java.util.Objects;
         @NamedQuery(
                 name = "findBlogUserByNickname",
                 query = "SELECT user FROM BlogUser AS user WHERE user.nickname = :userNickname"
+        ),
+        @NamedQuery(
+                name = "getAllBlogUsers",
+                query = "SELECT user FROM BlogUser AS user"
         )
 })
 @Entity

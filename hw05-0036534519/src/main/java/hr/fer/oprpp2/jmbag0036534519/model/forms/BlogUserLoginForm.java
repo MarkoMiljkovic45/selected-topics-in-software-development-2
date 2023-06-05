@@ -50,10 +50,6 @@ public class BlogUserLoginForm {
         }
     }
 
-    public void setError(String error, String message) {
-        errorMessageMap.put(error, message);
-    }
-
     public String getNickname() {
         return nickname;
     }
