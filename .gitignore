@@ -5,7 +5,6 @@ target/
 
 ### Misic ###
 *.zip
-*.pdf
 *.txt
 *.bin
 *.log
